@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">AutoClicker Flotante</string>
+    <string name="accessibility_service_description">Permite simular toques continuos automáticos en juegos y aplicaciones sin necesidad de root.</string>
+</resources>
