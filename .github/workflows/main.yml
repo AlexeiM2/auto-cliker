@@ -1,71 +1,36 @@
-name: Build Android APK
+name: Compilar AutoClicker
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
-  workflow_dispatch:
+    branches: [ "main" ]
 
 jobs:
   build:
-    name: Build AutoClicker APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+    - name: Clonar repositorio
+      uses: actions/checkout@v3
 
-      - name: 🔍 Locate Android project folder
-        id: locate
-        run: |
-          echo "Buscando proyecto Android..."
-          if [ -f "settings.gradle.kts" ] || [ -f "settings.gradle" ] || [ -f "build.gradle.kts" ]; then
-            echo "project_dir=." >> $GITHUB_OUTPUT
-            echo "Proyecto encontrado en la raíz del repositorio."
-          else
-            DIR=$(find . -maxdepth 3 -name "settings.gradle.kts" -o -name "settings.gradle" -o -name "build.gradle.kts" | head -n 1)
-            if [ -n "$DIR" ]; then
-              PROJECT_PATH=$(dirname "$DIR")
-              echo "project_dir=$PROJECT_PATH" >> $GITHUB_OUTPUT
-              echo "Proyecto encontrado en subdirectorio: $PROJECT_PATH"
-            else
-              echo "project_dir=." >> $GITHUB_OUTPUT
-              echo "No se encontró settings.gradle, usando raíz por defecto."
-            fi
-          fi
+    - name: Configurar Java 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
 
-      - name: ☕ Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+    - name: Dar permisos de ejecución a Gradle
+      # Usamos el wrapper de Gradle directamente
+      run: chmod +x gradlew || true
 
-      - name: 🛠️ Set up Android SDK Environment
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-          # Aceptar automáticamente todas las licencias del SDK oficial de Google preinstalado
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+    - name: Compilar APK con Gradle
+      # Si gradlew no existe, forzamos el uso de Gradle 8
+      uses: gradle/gradle-build-action@v2
+      with:
+        gradle-version: 8.4
+        arguments: assembleDebug
 
-      - name: 🔧 Prepare Gradle Wrapper
-        working-directory: ${{ steps.locate.outputs.project_dir }}
-        run: |
-          if [ -f "gradlew" ]; then
-            chmod +x gradlew
-          else
-            echo "Generando Gradle Wrapper v8.2..."
-            gradle wrapper --gradle-version 8.2
-            chmod +x gradlew
-          fi
-
-      - name: 🔨 Build Debug APK
-        working-directory: ${{ steps.locate.outputs.project_dir }}
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
-
-      - name: 📦 Upload APK to GitHub Artifacts (Download)
-        uses: actions/upload-artifact@v4
-        with:
-          name: AutoClicker-Debug-APK
-          path: ${{ steps.locate.outputs.project_dir }}/**/build/outputs/apk/debug/*.apk
-          retention-days: 14
+    - name: Subir APK generado
+      uses: actions/upload-artifact@v3
+      with:
+        name: AutoClicker-APK
+        path: app/build/outputs/apk/debug/app-debug.apk
